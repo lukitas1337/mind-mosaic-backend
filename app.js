@@ -1,50 +1,84 @@
-const express = require("express");
-const { neon } = require("@neondatabase/serverless");
-
-const PORT = 8000;
+import express from "express";
+import dotenv from "dotenv";
+import { queryDB } from "./db.js";
+// const { neon } = require("@neondatabase/serverless");
+dotenv.config();
+const PORT = process.env.PORT;
 const app = express();
 app.use(express.json());
-const sql = neon(
-  "postgresql://neondb_owner:HzSmBMAT0yu4@ep-delicate-bush-a5lmrzuk.us-east-2.aws.neon.tech/neondb?sslmode=require"
-);
 
 app.get("/api/v1/blogPosts", async (req, res) => {
-  const blogPosts = await sql`SELECT * FROM BlogPosts`;
-
-  res.status(200).json(blogPosts);
+  try {
+    const blogPosts = await queryDB(`SELECT * FROM BlogPosts`);
+    res.status(200).json(blogPosts);
+  } catch (error) {
+    console.log("can not fetch the data: " + error);
+    res.status(500).json({ error: "can not fetche the data" });
+  }
 });
 
 app.get("/api/v1/blogPosts/:id", async (req, res) => {
-  const id = req.params.id * 1;
-  const post =
-    await sql`SELECT name,author,content,date FROM BlogPosts WHERE id= ${id}`;
-  res.status(200).json(post);
+  try {
+    const id = req.params.id * 1;
+    const post = await queryDB(
+      `SELECT name,author,content,date FROM BlogPosts WHERE id=$1 `,
+      [id]
+    );
+    res.status(200).json(post);
+  } catch (error) {
+    console.log("can not fetch the data: " + error);
+    res.status(500).json({ error: "can not fetch the data" });
+  }
 });
 
 app.post("/api/v1/blogPosts", async (req, res) => {
-  await sql`INSERT INTO BlogPosts (name, author, content)
-VALUES (${req.body.name}, ${req.body.author}, ${req.body.content})`;
-  const blogPosts = await sql`SELECT * FROM BlogPosts`;
-  res.status(201).json(blogPosts);
+  try {
+    const { name, author, content } = req.body;
+    await queryDB(
+      `INSERT INTO BlogPosts (name, author, content)
+  VALUES ($1, $2, $3) RETURNING *`,
+      [name, author, content]
+    );
+    const blogPosts = await queryDB(`SELECT * FROM BlogPosts`);
+    res.status(201).json(blogPosts);
+  } catch (error) {
+    console.log("can not create the data: " + error);
+    res.status(500).json({ error: "can not create the data" });
+  }
 });
 
 app.put("/api/v1/blogPosts/:id", async (req, res) => {
-  const id = req.params.id * 1;
-  const updatedPost = req.body;
-  await sql`UPDATE BlogPosts
-SET name = ${req.body.name}, author = ${req.body.author} ,content = ${req.body.content}
-WHERE id = ${id};`;
-  const blogPosts = await sql`SELECT * FROM BlogPosts`;
-  res.status(200).json(blogPosts);
+  try {
+    const id = req.params.id * 1;
+    const { name, author, content } = req.body;
+    await queryDB(
+      `UPDATE BlogPosts
+  SET name = $1, author = $2 ,content = $3
+  WHERE id = $4 RETURNING *`,
+      [name, author, content, id]
+    );
+    const blogPosts = await queryDB(`SELECT * FROM BlogPosts`);
+    res.status(200).json(blogPosts);
+  } catch (error) {
+    console.log("can not update the data: " + error);
+    res.status(500).json({ error: "can not update the data" });
+  }
 });
 
 app.delete("/api/v1/blogPosts/:id", async (req, res) => {
-  const id = req.params.id * 1;
-  await sql`DELETE FROM BlogPosts WHERE id = ${id}`;
-  const posts = await sql`SELECT * FROM BlogPosts`;
-  res.status(204).json(posts);
+  try {
+    const id = req.params.id * 1;
+    await queryDB(`DELETE FROM BlogPosts WHERE id = $1 RETURNING *`, [id]);
+    const posts = await queryDB(`SELECT * FROM BlogPosts`);
+    res.status(200).json(posts);
+  } catch (error) {
+    console.log("can not delete the data: " + error);
+    res.status(500).json({ error: "can not delete the data" });
+  }
 });
-
+app.get("*", (req, res) => {
+  res.status(500).send("Server error!");
+});
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}/api/v1/blogPosts`);
 });
