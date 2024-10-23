@@ -1,11 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
 import { queryDB } from "./db.js";
+import cors from "cors";
 // const { neon } = require("@neondatabase/serverless");
 dotenv.config();
 const PORT = process.env.PORT;
 const app = express();
-app.use(express.json());
+app.use(express.json(), cors());
 
 app.get("/api/v1/blogPosts", async (req, res) => {
   try {
@@ -33,11 +34,11 @@ app.get("/api/v1/blogPosts/:id", async (req, res) => {
 
 app.post("/api/v1/blogPosts", async (req, res) => {
   try {
-    const { name, author, content } = req.body;
+    const { title, author, content } = req.body;
     await queryDB(
       `INSERT INTO BlogPosts (name, author, content)
   VALUES ($1, $2, $3) RETURNING *`,
-      [name, author, content]
+      [title, author, content]
     );
     const blogPosts = await queryDB(`SELECT * FROM BlogPosts`);
     res.status(201).json(blogPosts);
