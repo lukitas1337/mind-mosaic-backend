@@ -22,7 +22,7 @@ app.get("/api/v1/blogPosts/:id", async (req, res) => {
   try {
     const id = req.params.id * 1;
     const post = await queryDB(
-      `SELECT name,author,content,date FROM BlogPosts WHERE id=$1 `,
+      `SELECT id,name,author,content,date FROM BlogPosts WHERE id=$1 `,
       [id]
     );
     res.status(200).json(post);
